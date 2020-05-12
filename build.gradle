@@ -1,0 +1,75 @@
+buildscript {
+    ext {
+        springBootVersion = '2.2.6.RELEASE'
+        springBootDataGeodeVersion = '1.2.6.RELEASE'
+        lombokVersion = '1.18.10'
+    }
+    repositories {
+        mavenCentral()
+        maven { url "https://repo.spring.io/snapshot" }
+        maven { url "https://repo.spring.io/milestone" }
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    }
+}
+
+plugins {
+    id 'io.franzbecker.gradle-lombok' version '1.11'
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        jcenter()
+        maven { url 'https://repo.spring.io/libs-release' }
+        maven { url 'https://repo.spring.io/libs-milestone' }
+        maven { url 'https://repo.spring.io/libs-snapshot' }
+        maven { url 'https://oss.jfrog.org/artifactory/oss-snapshot-local' }
+        maven { url 'https://mvnrepository.com/artifact/org.springframework.plugin/spring-plugin' }
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    sourceCompatibility = 1.8
+
+    group = 'example'
+    version = '0.0.1-SNAPSHOT'
+
+    configurations {
+        provided
+        compile.extendsFrom provided
+    }
+
+    task copyDependencies(type: Copy) {
+        into "$buildDir/dependancies"
+        from(configurations.compile - configurations.provided)
+    }
+
+    jar {
+        dependsOn copyDependencies
+    }
+}
+
+project(':client') {
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+    dependencies {
+        compile "org.springframework.geode:spring-geode-starter:${springBootDataGeodeVersion}"
+        compile "org.springframework.geode:spring-geode-starter-actuator:${springBootDataGeodeVersion}"
+        compile "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+        compile 'io.micrometer:micrometer-registry-wavefront:1.3.2'
+    }
+    bootRun {
+        if (project.hasProperty('args')) {
+            args project.args.split(',')
+        }
+    }
+}
+
+project(':server') {
+    dependencies {
+        provided 'io.pivotal.gemfire:geode-core:9.8.3'
+    }
+}
